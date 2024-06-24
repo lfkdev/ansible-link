@@ -3,7 +3,7 @@
   <div>
     <h1>ANSIBLE LINK</h1>
     <p>
-      RESTful API for executing Ansible playbooks remotely. It allows users to trigger playbook executions, pass custom variables, and track the status of each execution.
+      RESTful API for executing Ansible playbooks remotely
     </p>
   </div>
 </div>
@@ -59,7 +59,7 @@ playbook_dir: '/etc/ansible/'
 inventory_dir: '/etc/ansible/hosts'
 ansible_playbook_cmd: 'ansible-playbook'
 
-job_storage_dir: '/var/lib/ansible-link/job_storage'
+job_storage_dir: '/var/lib/ansible-link/job-storage'
 
 log_level: 'INFO'
 log_file: '/var/log/ansible-link/api.log'

@@ -22,8 +22,12 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
-api = Api(app, version='0.9', title='ANSIBLE-LINK',
-          description='API for executing Ansible playbooks')
+api = Api(app, 
+          version='0.9',
+          title='ANSIBLE-LINK',
+          description='API for executing Ansible playbooks',
+          external_doc={'description': 'GitHub', 'url': 'https://github.com/lfkdev/ansible-link'}
+)
 
 ns = api.namespace('ansible', description='Ansible operations')
 
