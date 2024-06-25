@@ -33,5 +33,5 @@ jobs:
         touch test_inventory.ini
     
     - name: Run tests
-      run: python -m unittest test_app.py
+      run: python -m unittest discover tests
 
