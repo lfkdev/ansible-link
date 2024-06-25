@@ -1,21 +1,37 @@
-name: Python application
+name: Run Tests
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-
+    
     steps:
     - uses: actions/checkout@v2
+    
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.8'
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    - name: Run tests
+    
+    - name: Create config file
       run: |
-        python -m unittest discover tests
+        echo "playbook_dir: ./test_playbooks" > config.yml
+        echo "inventory_file: ./test_inventory.ini" >> config.yml
+        echo "job_storage_dir: ./test_job_storage" >> config.yml
+        mkdir test_playbooks test_job_storage
+        touch test_playbooks/test_playbook.yml
+        touch test_inventory.ini
+    
+    - name: Run tests
+      run: python -m unittest test_app.py
+

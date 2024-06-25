@@ -23,10 +23,11 @@
 <b>NOTE</b> Project is usable but still in early development
 
 ## Motivation
-Searched for a way to run our playbooks over CI/CD without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I created Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely. Essentially a RESTful API sitting on top of [ansible-runner](https://github.com/ansible/ansible-runner)
+Searched for a way to run our playbooks automated without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I made Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely. Essentially a RESTful API sitting on top of [ansible-runner](https://github.com/ansible/ansible-runner)
 
 ## Prerequisites
 * Python 3.7+
+* PIP
 * Your Ansible node
 
 ## Installation
@@ -48,15 +49,16 @@ playbook_dir: '/etc/ansible/'
 inventory_file: '/etc/ansible/environments/hosts'
 ```
 
+* Start Ansible-Link
 ```shell
 python3 ansible_link/ansible_link.py
 ```
 The API will be accessible at localhost:port (default 5001) or wherever you bind it to.
 
 ## API Documentation
-The API documentation is available via Swagger UI.
+The API documentation is available via the Swagger UI.
 
-<img src="docs.png" alt="Ansible Link Docs"  style="margin-right: 20px;">
+<img src="docs.png" alt="Ansible Link Docs">
 
 ## Configuration
 The API configuration is stored in the `config.yml` file. 
@@ -105,7 +107,7 @@ playbook_whitelist:
 ```
 Leave empty to allow all playbooks. This is for the backend, you could also use the `limit` arg from ansible-runner in the request directly.
 
-## Produciton environment
+## Prod environment
 
 **Use WSGI for prod ENV (gunicorn) + systemd service**
 
@@ -158,14 +160,11 @@ WantedBy=multi-user.target
 
 ## Usage
 
-#### Example requests:
-
 Below are examples demonstrating how to use ansible-link API compared to Ansible CLI.
 
-## Example 1: Basic Playbook Run
-
+---
 ```bash
-ansible-playbook site.yml
+$ ansible-playbook site.yml
 ```
 
 ```json
@@ -182,7 +181,7 @@ curl -X POST http://your-ansible-link-server/ansible/playbook \
 ---
 
 ```bash
-ansible-playbook deploy.yml -e version=1.5.0 environment=staging
+$ ansible-playbook deploy.yml -e version=1.5.0 environment=staging
 ```
 
 ```json
@@ -197,7 +196,7 @@ ansible-playbook deploy.yml -e version=1.5.0 environment=staging
 ---
 
 ```bash
-ansible-playbook site.yml --tags "update,packages" -vv
+$ ansible-playbook site.yml --tags "update,packages" -vv
 ```
 
 ```json
@@ -210,7 +209,7 @@ ansible-playbook site.yml --tags "update,packages" -vv
 ---
 
 ```bash
-ansible-playbook restore.yml --limit "databases" --forks 3
+$ ansible-playbook restore.yml --limit "databases" --forks 3
 ```
 
 ```json
@@ -223,7 +222,7 @@ ansible-playbook restore.yml --limit "databases" --forks 3
 
 ---
 ```bash
-ansible-playbook site.yml -i custom_inventory.ini -e '{"key1": "value1", "key2": "value2"}' --tags "provision,configure" --skip-tags "cleanup" --limit "webservers:&staged" --forks 10 -vvv
+$ ansible-playbook site.yml -i custom_inventory.ini -e '{"key1": "value1", "key2": "value2"}' --tags "provision,configure" --skip-tags "cleanup" --limit "webservers:&staged" --forks 10 -vvv
 ```
 
 ```json
@@ -245,7 +244,7 @@ ansible-playbook site.yml -i custom_inventory.ini -e '{"key1": "value1", "key2":
 --- 
 
 ```bash
-ansible-playbook site.yml -i custom_inventory.ini -e environment=production --diff --check
+$ ansible-playbook site.yml -i custom_inventory.ini -e environment=production --diff --check
 ```
 
 ```json
