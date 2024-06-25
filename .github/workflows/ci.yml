@@ -29,9 +29,19 @@ jobs:
         echo "inventory_file: ./test_inventory.ini" >> config.yml
         echo "job_storage_dir: ./test_job_storage" >> config.yml
         mkdir test_playbooks test_job_storage
-        touch test_playbooks/test_playbook.yml
         touch test_inventory.ini
     
+    - name: Create test playbook
+      run: |
+        touch test_playbooks/test_playbook.yml
+        echo "- hosts: localhost" > test_playbooks/test_playbook.yml
+        echo "  tasks:" >> test_playbooks/test_playbook.yml
+        echo "    - name: Output OK" >> test_playbooks/test_playbook.yml
+        echo "      debug:" >> test_playbooks/test_playbook.yml
+        echo "        msg: OK" >> test_playbooks/test_playbook.yml
+
+    - name: Set ANSIBLE_API_CONFIG
+      run: export ANSIBLE_API_CONFIG=$GITHUB_WORKSPACE/config.yml
+
     - name: Run tests
       run: python -m unittest discover tests
-
