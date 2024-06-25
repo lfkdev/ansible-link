@@ -6,9 +6,12 @@
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_restx import Api, Resource, fields
 from flask import Flask, request, jsonify
+
+from ansible_runner.config.runner import RunnerConfig
+import ansible_runner
+
 from datetime import datetime
 from pathlib import Path
-import ansible_runner
 import threading
 import logging
 import json
@@ -16,9 +19,6 @@ import uuid
 import yaml
 import os
 import re
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -32,15 +32,23 @@ api = Api(app,
 ns = api.namespace('ansible', description='Ansible operations')
 
 def load_config():
-    config_path = os.environ.get('ANSIBLE_API_CONFIG', 'config.yml')
+    current_dir = Path(__file__).parent.absolute()
+    default_config_path = current_dir / 'config.yml'
+    config_path = os.environ.get('ANSIBLE_API_CONFIG', default_config_path)
     try:
         with open(config_path, 'r') as f:
             return yaml.safe_load(f)
     except Exception as e:
-        logger.error(f"Failed to load configuration: {e} - is ANSIBLE_API_CONFIG set correctly?")
-        raise
+        print(f"Failed to load configuration: {e} - is ANSIBLE_API_CONFIG set correctly?")
+        raise   
 
 config = load_config()
+
+log_level = getattr(logging, config.get('log_level', 'INFO').upper())
+logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+logger.info(f"Logging level set to {logging.getLevelName(log_level)}")
 
 job_storage_dir = Path(config.get('job_storage_dir', '/var/lib/ansible-link/job-storage'))
 job_storage_dir.mkdir(parents=True, exist_ok=True)
@@ -62,19 +70,24 @@ def validate_playbook(playbook):
 
     return str(playbook_path)
 
-
 playbook_model = api.model('PlaybookRequest', {
-    'playbook': fields.String(required=True, description='Playbook name'),
-    'inventory': fields.String(description='Inventory file'),
-    'vars': fields.Raw(description='Variables for the playbook'),
+    'playbook': fields.String(required=True, description='Playbook name (e.g., "site.yml")'),
+    'inventory': fields.String(description='Inventory file name. If not provided, the default inventory will be used.'),
+    'vars': fields.Raw(description='Variables for the playbook as a dictionary'),
+    'forks': fields.Integer(description='Number of parallel processes to use. Default is 5.', default=5),
+    'verbosity': fields.Integer(description='Ansible verbosity level (0-4). Default is 0.', default=0, min=0, max=4),
+    'limit': fields.String(description='Limit the playbook run to specific hosts or groups (e.g., "webservers,dbservers")'),
+    'tags': fields.String(description='Comma-separated string of tags to run in the playbook (e.g., "tag1,tag2")'),
+    'skip_tags': fields.String(description='Comma-separated string of tags to skip in the playbook (e.g., "tag3,tag4")'),
+    'cmdline': fields.String(description='Custom command-line arguments for Ansible')
 })
 
 job_model = api.model('JobResponse', {
-    'job_id': fields.String(description='Unique job ID'),
-    'status': fields.String(description='Current job status'),
+    'job_id': fields.String(description='Unique job ID (UUID)'),
+    'status': fields.String(description='Current job status (e.g., "running", "completed", "failed", "error")'),
 })
 
-jobs = {}
+jobs = {} # memory job storage
 
 def save_job_to_disk(job_id, job_data):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -84,24 +97,43 @@ def save_job_to_disk(job_id, job_data):
         json.dump(job_data, f, indent=2)
     logger.info(f"Job {job_id} saved to {file_path}")
 
-def run_playbook(job_id, playbook, inventory, vars):
+def run_playbook(job_id, playbook, inventory, vars, forks=5, verbosity=0, limit=None, tags=None, skip_tags=None, cmdline=None):
     try:
-        playbook_path = validate_playbook(playbook)
-        inventory_path = Path(config['inventory_dir']) / inventory if inventory else None
+        job_private_data_dir = job_storage_dir / job_id
+        job_private_data_dir.mkdir(parents=True, exist_ok=True)
 
-        tags = vars.pop('ansible_tags', None)
+        playbook_path = Path(config['playbook_dir']) / playbook
+        if not playbook_path.is_file():
+            raise ValueError(f"Playbook {playbook_path} not found")
 
-        runner_config = {
-            'playbook': playbook_path,
-            'inventory': str(inventory_path) if inventory_path else None,
-            'extravars': vars
-        }
+        inventory_path = Path(inventory) if inventory else Path(config['inventory_file'])
+        if not inventory_path.is_file():
+            raise ValueError(f"Inventory file not found: {inventory_path}")
 
-        # handle tags, implement proper way later
-        if tags:
-            runner_config['tags'] = tags
+        runner_config = RunnerConfig(
+            private_data_dir=str(job_private_data_dir),
+            playbook=str(playbook_path),
+            inventory=str(inventory_path),
+            extravars=vars,
+            limit=limit,
+            verbosity=verbosity,
+            forks=forks,
+            tags=tags,
+            skip_tags=skip_tags,
+            cmdline=cmdline,
+            suppress_ansible_output=config.get('suppress_ansible_output', False),
+            omit_event_data=config.get('omit_event_data', False),
+            only_failed_event_data=config.get('only_failed_event_data', False)
+        )
+        logger.debug(f"RunnerConfig: {runner_config.__dict__}")
 
-        runner = ansible_runner.run(**runner_config)
+        runner_config.prepare()
+
+        runner = ansible_runner.Runner(config=runner_config)
+        logger.info(f"Runner command: {' '.join(runner.config.command)}")
+        result = runner.run()
+
+        logger.debug(f"Runner result: {result}")
 
         jobs[job_id]['status'] = 'completed' if runner.status == 'successful' else 'failed'
         jobs[job_id]['stdout'] = runner.stdout.read()
@@ -130,10 +162,27 @@ class AnsiblePlaybook(Resource):
                 'playbook': data['playbook'],
                 'inventory': data.get('inventory'),
                 'vars': data.get('vars', {}),
+                'forks': data.get('forks', 5),
+                'verbosity': data.get('verbosity', 0),
+                'limit': data.get('limit'),
+                'tags': data.get('tags'),
+                'skip_tags': data.get('skip_tags'),
+                'cmdline': data.get('cmdline'),
                 'start_time': datetime.now().isoformat(),
             }
-            
-            thread = threading.Thread(target=run_playbook, args=(job_id, data['playbook'], data.get('inventory'), data.get('vars', {})))
+
+            thread = threading.Thread(target=run_playbook, args=(
+                job_id, 
+                data['playbook'], 
+                data.get('inventory'), 
+                data.get('vars', {}),
+                data.get('forks', 5),
+                data.get('verbosity', 0),
+                data.get('limit'),
+                data.get('tags'),
+                data.get('skip_tags'),
+                data.get('cmdline')
+            ))
             thread.start()
             
             logger.info(f"Started job {job_id} for playbook {data['playbook']}")
