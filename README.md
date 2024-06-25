@@ -23,16 +23,16 @@
 <b>NOTE</b> Project is usable but still in early development
 
 ## Motivation
-Searched for a way to run our playbooks over CI/CD without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I created Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely.
+Searched for a way to run our playbooks over CI/CD without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I created Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely. Essentially a RESTful API sitting on top of [ansible-runner](https://github.com/ansible/ansible-runner)
 
 ## Prerequisites
-Python 3.7+
-Your Ansible node
+* Python 3.7+
+* Your Ansible node
 
 ## Installation
 * Clone the repository (on your ansible-node):
 ```shell
-git clone git@github.com:Daemonfork/ansible-link.git
+git clone git@github.com:lfkdev/ansible-link.git
 cd ansible-link
 ```
 
