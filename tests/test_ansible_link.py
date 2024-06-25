@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ansible_link.ansible_link import app, config, load_config
+from ansible_link.ansible_link import app, load_config
 
 class TestAnsibleLink(unittest.TestCase):
     def setUp(self):
