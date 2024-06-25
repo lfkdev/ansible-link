@@ -25,10 +25,9 @@ jobs:
     
     - name: Create config file
       run: |
-        echo "playbook_dir: ./test_playbooks" > test-config.yml
-
-        echo "inventory_file: ./test_inventory.ini" >> test-config.yml
-        echo "job_storage_dir: ./test_job_storage" >> test-config.yml
+        echo "playbook_dir: ./test_playbooks" > ansible_link/config.yml
+        echo "inventory_file: ./test_inventory.ini" >> ansible_link/config.yml
+        echo "job_storage_dir: ./test_job_storage" >> ansible_link/config.yml
         mkdir test_playbooks test_job_storage
         touch test_inventory.ini
     
@@ -45,7 +44,9 @@ jobs:
       run: export ANSIBLE_API_CONFIG=$GITHUB_WORKSPACE/test-config.yml
 
     - name: show structure
-      run: ls -R
+      run: |
+        ls -R
+        echo "ANSIBLE_API_CONFIG: $ANSIBLE_API_CONFIG"
 
     - name: Run tests
       run: python -m unittest discover tests
