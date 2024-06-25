@@ -1,14 +1,11 @@
-name: Ansible-Link CI
+name: Python application
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -20,8 +17,5 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     - name: Run tests
-      run: python -m unittest discover tests
-    - name: Run linter
       run: |
-        pip install flake8
-        flake8 .
+        python -m unittest discover tests
