@@ -4,3 +4,5 @@ ansible-runner
 werkzeug
 pyyaml
 pytest
+requests
+prometheus-client
