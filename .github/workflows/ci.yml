@@ -52,6 +52,7 @@ jobs:
     - name: Update import in ansible_link.py
       run: |
         sed -i 's/from webhook import WebhookSender/from ansible_link.webhook import WebhookSender/' ansible_link/ansible_link.py
+        sed -i 's/from version import VERSION/from ansible_link.version import VERSION/' ansible_link/ansible_link.py
     - name: Run tests
       run: |
         python -m unittest discover tests
