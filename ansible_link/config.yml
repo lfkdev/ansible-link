@@ -15,6 +15,9 @@ suppress_ansible_output: false
 omit_event_data: false
 only_failed_event_data: false
 
+# promtetheus
+metrics_port: 9090
+
 # general
 playbook_dir: '/etc/ansible/'
 inventory_file: '/etc/ansible/environments/hosts'
@@ -26,3 +29,4 @@ playbook_whitelist: []
 # playbook_whitelist:
 #   - monitoring.yml
 #   - mariadb.yml
+

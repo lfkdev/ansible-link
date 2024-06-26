@@ -10,6 +10,8 @@ from flask import Flask, request, jsonify
 from ansible_runner.config.runner import RunnerConfig
 import ansible_runner
 
+from prometheus_client import Counter, Histogram, Gauge, start_http_server
+
 from datetime import datetime
 from pathlib import Path
 import threading
@@ -58,6 +60,11 @@ playbook_whitelist = config.get('playbook_whitelist', [])
 # regex whitelist support
 compiled_whitelist = [re.compile(pattern) for pattern in playbook_whitelist]
 
+# metrics
+PLAYBOOK_RUNS = Counter('ansible_link_playbook_runs_total', 'Total number of playbook runs', ['playbook', 'status'])
+PLAYBOOK_DURATION = Histogram('ansible_link_playbook_duration_seconds', 'Duration of playbook runs in seconds', ['playbook'])
+ACTIVE_JOBS = Gauge('ansible_link_active_jobs', 'Number of currently active jobs')
+
 def validate_playbook(playbook):
     playbook_path = Path(config['playbook_dir']) / playbook
     if not playbook_path.is_file():
@@ -98,6 +105,8 @@ def save_job_to_disk(job_id, job_data):
     logger.info(f"Job {job_id} saved to {file_path}")
 
 def run_playbook(job_id, playbook, inventory, vars, forks=5, verbosity=0, limit=None, tags=None, skip_tags=None, cmdline=None):
+    ACTIVE_JOBS.inc()
+    start_time = datetime.now()
     try:
         job_private_data_dir = job_storage_dir / job_id
         job_private_data_dir.mkdir(parents=True, exist_ok=True)
@@ -130,24 +139,32 @@ def run_playbook(job_id, playbook, inventory, vars, forks=5, verbosity=0, limit=
         runner_config.prepare()
 
         runner = ansible_runner.Runner(config=runner_config)
-        logger.info(f"Runner command: {' '.join(runner.config.command)}")
+        logger.info(f"Runner: {' '.join(runner.config.command)}")
         result = runner.run()
 
         logger.debug(f"Runner result: {result}")
 
-        jobs[job_id]['status'] = 'completed' if runner.status == 'successful' else 'failed'
+        status = 'completed' if runner.status == 'successful' else 'failed'
+        jobs[job_id]['status'] = status
         jobs[job_id]['stdout'] = runner.stdout.read()
         jobs[job_id]['stderr'] = runner.stderr.read()
         jobs[job_id]['stats'] = runner.stats
 
-        logger.info(f"Job {job_id} completed with status: {jobs[job_id]['status']}")
+        logger.info(f"Job {job_id} completed with status: {status}")
         
         save_job_to_disk(job_id, jobs[job_id])
+        PLAYBOOK_RUNS.labels(playbook=playbook, status=status).inc()
     except Exception as e:
         logger.error(f"Error in job {job_id}: {str(e)}")
         jobs[job_id]['status'] = 'error'
         jobs[job_id]['error'] = str(e)
         save_job_to_disk(job_id, jobs[job_id])
+        PLAYBOOK_RUNS.labels(playbook=playbook, status='error').inc()
+    finally:
+        ACTIVE_JOBS.dec()
+        duration = (datetime.now() - start_time).total_seconds()
+        PLAYBOOK_DURATION.labels(playbook=playbook).observe(duration)
+
 
 @ns.route('/playbook')
 class AnsiblePlaybook(Resource):
@@ -226,4 +243,9 @@ def health_check():
     return jsonify({"status": "healthy"}), 200
 
 if __name__ == '__main__':
+    metrics_port = config.get('metrics_port', 8000)
+
+    start_http_server(metrics_port)
+    logger.info(f"Metrics server started ({metrics_port})")
+
     app.run(debug=config.get('debug', False), host=config.get('host', '0.0.0.0'), port=config.get('port', 5000))

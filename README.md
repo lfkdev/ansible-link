@@ -19,6 +19,7 @@
 - **Playbook Execution** Asynchronous playbook executions with real-time status updates.
 - **Playbook History** Keep track of playbook executions and their status.
 - **API Documentation** Swagger UI documentation for easy exploration of the API endpoints.
+- **Metrics** Exposes Prometheus metrics for playbook runs, durations, and active jobs.
 
 <b>NOTE</b> Project is usable but still in early development
 
@@ -314,6 +315,17 @@ Ansible-Link will save each job as .json with the following info (from ansible-r
 essentially showing everything ansible-playbook would display.
 
 <b>Note</b> After submitting a request to the API, you will receive a job ID. You can use this job ID to check the status and retrieve the output of the playbook run using the /ansible/job/<job_id> and /ansible/job/<job_id>/output endpoints respectively.
+
+## Metrics
+Ansible-Link exposes the following metrics:
+
+```python
+PLAYBOOK_RUNS = Counter('ansible_link_playbook_runs_total', 'Total number of playbook runs', ['playbook', 'status'])
+PLAYBOOK_DURATION = Histogram('ansible_link_playbook_duration_seconds', 'Duration of playbook runs in seconds', ['playbook'])
+ACTIVE_JOBS = Gauge('ansible_link_active_jobs', 'Number of currently active jobs')
+```
+
+The metrics can be used to set alerts, track the history of jobs, monitor performance and so on
 
 ## Security Considerations
 * Use TLS in production
