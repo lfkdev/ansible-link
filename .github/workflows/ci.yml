@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  ansible-link-ci:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -28,11 +28,16 @@ jobs:
         touch test_inventory.ini
     - name: Create test playbook
       run: |
-        echo "- hosts: localhost" > test_playbooks/test_playbook.yml
-        echo "  tasks:" >> test_playbooks/test_playbook.yml
-        echo "    - name: Output OK" >> test_playbooks/test_playbook.yml
-        echo "      debug:" >> test_playbooks/test_playbook.yml
-        echo "        msg: PLAYBOOK RUN OK" >> test_playbooks/test_playbook.yml
+        cat << EOF > test_playbooks/test_playbook.yml
+        ---
+        - name: Test Playbook
+          hosts: localhost
+          connection: local
+          tasks:
+            - name: Print a message
+              debug:
+                msg: "This is a test playbook"
+        EOF
     - name: Set PYTHONPATH and ANSIBLE_API_CONFIG
       run: |
         echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
@@ -42,6 +47,8 @@ jobs:
         ls -R
         echo "PYTHONPATH: $PYTHONPATH"
         echo "ANSIBLE_API_CONFIG: $ANSIBLE_API_CONFIG"
+        pip list
+        cat test_playbooks/test_playbook.yml
     - name: Update import in ansible_link.py
       run: |
         sed -i 's/from webhook import WebhookSender/from ansible_link.webhook import WebhookSender/' ansible_link/ansible_link.py

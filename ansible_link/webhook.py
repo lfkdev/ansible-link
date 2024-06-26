@@ -24,28 +24,43 @@ class WebhookSender:
             "timestamp": datetime.now().isoformat()
         }
         
+        if 'error' in job_data:
+            base_payload['error'] = job_data['error']
+
         if self.webhook_type == 'slack':
             color = "#36a64f" if job_data['status'] in ['completed', 'started'] else "#ff0000"
+            fields = [
+                {"title": "Status", "value": job_data['status'], "short": True},
+                {"title": "Job ID", "value": job_data['job_id'], "short": True}
+            ]
+            if 'error' in job_data:
+                fields.append({"title": "Error", "value": job_data['error'], "short": False})
+            
             return {
                 "attachments": [{
                     "color": color,
-                    "title": f"Ansible {event_type.replace('_', ' ').title()}",
-                    "text": f"Playbook: {job_data['playbook']}\nStatus: {job_data['status']}",
-                    "footer": f"Ansible-Link | {job_data['job_id']}",
+                    "title": job_data['playbook'],
+                    "text": f"Event: {event_type.replace('_', ' ').title()}",
+                    "fields": fields,
+                    "footer": "Ansible-Link",
                     "ts": int(datetime.now().timestamp())
                 }]
             }
         elif self.webhook_type == 'discord':
             color = 0x36a64f if job_data['status'] in ['completed', 'started'] else 0xff0000
+            fields = [
+                {"name": "Status", "value": job_data['status'], "inline": True},
+                {"name": "Job ID", "value": job_data['job_id'], "inline": True},
+                {"name": "Event", "value": event_type.replace('_', ' ').title(), "inline": False}
+            ]
+            if 'error' in job_data:
+                fields.append({"name": "Error", "value": job_data['error'], "inline": False})
+            
             return {
                 "embeds": [{
-                    "title": f"Ansible {event_type.replace('_', ' ').title()}",
+                    "title": job_data['playbook'],
                     "color": color,
-                    "fields": [
-                        {"name": "Playbook", "value": job_data['playbook'], "inline": True},
-                        {"name": "Status", "value": job_data['status'], "inline": True},
-                        {"name": "Job ID", "value": job_data['job_id'], "inline": False}
-                    ],
+                    "fields": fields,
                     "footer": {"text": "Ansible-Link"},
                     "timestamp": datetime.now().isoformat()
                 }]
