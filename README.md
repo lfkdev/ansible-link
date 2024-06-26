@@ -22,7 +22,7 @@
 - **Metrics** Exposes Prometheus metrics for playbook runs, durations, and active jobs.
 - **Webhook Notifications** Send notifications to Slack, Discord, or custom webhooks for job events.
 
-<b>NOTE</b> Project is usable but still in early development
+<b>NOTE</b> Project is usable but still in early development.
 
 ## Motivation
 Searched for a way to run our playbooks automated without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I made Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely. Essentially a RESTful API sitting on top of [ansible-runner](https://github.com/ansible/ansible-runner).
