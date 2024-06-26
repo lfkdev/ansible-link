@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_restx import Api, Resource, fields
 from flask import Flask, request, jsonify
 
-from .version import VERSION
+from version import VERSION
 from webhook import WebhookSender
 
 from ansible_runner.config.runner import RunnerConfig
