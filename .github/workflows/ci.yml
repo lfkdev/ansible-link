@@ -1,4 +1,4 @@
-name: Run Tests
+name: Ansible-Link CI/CD
 
 on:
   push:
@@ -55,3 +55,58 @@ jobs:
     - name: Run tests
       run: |
         python -m unittest discover tests
+
+  build-artifact:
+    needs: ansible-link-ci
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - name: Get version
+      id: get_version
+      run: |
+        echo "VERSION=$(python -c "from ansible_link.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
+    - name: Create zip artifact
+      run: |
+        zip -r ansible-link-${{ env.VERSION }}.zip ansible_link
+    - name: Create hash file
+      run: |
+        sha256sum ansible-link-${{ env.VERSION }}.zip > ansible-link-${{ env.VERSION }}.sha256
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ansible-link-${{ env.VERSION }}
+        path: |
+          ansible-link-${{ env.VERSION }}.zip
+          ansible-link-${{ env.VERSION }}.sha256
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ env.VERSION }}
+        release_name: Release ${{ env.VERSION }}
+        draft: false
+        prerelease: false
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./ansible-link-${{ env.VERSION }}.zip
+        asset_name: ansible-link-${{ env.VERSION }}.zip
+        asset_content_type: application/zip
+    - name: Upload Hash File
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./ansible-link-${{ env.VERSION }}.sha256
+        asset_name: ansible-link-${{ env.VERSION }}.sha256
+        asset_content_type: text/plain

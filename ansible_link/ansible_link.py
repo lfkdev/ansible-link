@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_restx import Api, Resource, fields
 from flask import Flask, request, jsonify
 
+from .version import VERSION
 from webhook import WebhookSender
 
 from ansible_runner.config.runner import RunnerConfig
@@ -38,12 +39,12 @@ ns = api.namespace('ansible', description='Ansible operations')
 def load_config():
     current_dir = Path(__file__).parent.absolute()
     default_config_path = current_dir / 'config.yml'
-    config_path = os.environ.get('ANSIBLE_API_CONFIG', default_config_path)
+    config_path = os.environ.get('ANSIBLE_LINK_CONFIG_PATH', default_config_path)
     try:
         with open(config_path, 'r') as f:
             return yaml.safe_load(f)
     except Exception as e:
-        print(f"Failed to load configuration: {e} - is ANSIBLE_API_CONFIG set correctly?")
+        print(f"Failed to load configuration: {e} - is ANSIBLE_LINK_CONFIG_PATH set correctly?")
         raise   
 
 config = load_config()
@@ -268,10 +269,15 @@ class JobOutput(Resource):
 def health_check():
     return jsonify({"status": "healthy"}), 200
 
+@app.route('/version')
+def version_check():
+    return jsonify({"version": VERSION}), 200
+
 if __name__ == '__main__':
     metrics_port = config.get('metrics_port', 8000)
 
     start_http_server(metrics_port)
-    logger.info(f"Metrics server started ({metrics_port})")
+    logger.info(f"Metrics server started, port {metrics_port}")
+    logger.info(f"Initializing Ansible-Link, version {VERSION}")
 
-    app.run(debug=config.get('debug', False), host=config.get('host', '0.0.0.0'), port=config.get('port', 5000))
+    app.run(debug=config.get('debug', False), host=config.get('host', '127.0.0.1'), port=config.get('port', 5000))

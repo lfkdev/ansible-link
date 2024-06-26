@@ -72,9 +72,9 @@ The API documentation is available via the Swagger UI.
 
 ## Configuration
 The API configuration is stored in the `config.yml` file. 
-If you move your config to a different location you can use `ANSIBLE_API_CONFIG` 
+If you move your config to a different location you can use `ANSIBLE_LINK_CONFIG_PATH` 
 ```shell
-$ export ANSIBLE_API_CONFIG='/etc/ansible-link/config.yml'
+$ export ANSIBLE_LINK_CONFIG_PATH='/etc/ansible-link/config.yml'
 ```
 
 You can customize the following settings:
