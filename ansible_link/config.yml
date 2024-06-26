@@ -5,6 +5,12 @@
 #   ansible-runner.readthedocs.io/_/downloads/en/stable/pdf/       #
 ####################################################################
 
+# webhook
+# webhook:
+#   url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+#   type: "slack" # "slack", "discord" or "generic" supported
+#   timeout: 5  # optional, default 5 seconds
+
 # flask
 host: '127.0.0.1'
 port: 5001

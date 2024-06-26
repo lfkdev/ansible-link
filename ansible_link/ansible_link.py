@@ -7,6 +7,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_restx import Api, Resource, fields
 from flask import Flask, request, jsonify
 
+from webhook import WebhookSender
+
 from ansible_runner.config.runner import RunnerConfig
 import ansible_runner
 
@@ -60,7 +62,8 @@ playbook_whitelist = config.get('playbook_whitelist', [])
 # regex whitelist support
 compiled_whitelist = [re.compile(pattern) for pattern in playbook_whitelist]
 
-# metrics
+webhook_sender = WebhookSender(config.get('webhook', {}))
+
 PLAYBOOK_RUNS = Counter('ansible_link_playbook_runs_total', 'Total number of playbook runs', ['playbook', 'status'])
 PLAYBOOK_DURATION = Histogram('ansible_link_playbook_duration_seconds', 'Duration of playbook runs in seconds', ['playbook'])
 ACTIVE_JOBS = Gauge('ansible_link_active_jobs', 'Number of currently active jobs')
@@ -107,6 +110,13 @@ def save_job_to_disk(job_id, job_data):
 def run_playbook(job_id, playbook, inventory, vars, forks=5, verbosity=0, limit=None, tags=None, skip_tags=None, cmdline=None):
     ACTIVE_JOBS.inc()
     start_time = datetime.now()
+
+    webhook_sender.send("job_started", {
+        "job_id": job_id,
+        "playbook": playbook,
+        "status": "started"
+    })
+
     try:
         job_private_data_dir = job_storage_dir / job_id
         job_private_data_dir.mkdir(parents=True, exist_ok=True)
@@ -153,13 +163,29 @@ def run_playbook(job_id, playbook, inventory, vars, forks=5, verbosity=0, limit=
         logger.info(f"Job {job_id} completed with status: {status}")
         
         save_job_to_disk(job_id, jobs[job_id])
+
         PLAYBOOK_RUNS.labels(playbook=playbook, status=status).inc()
+
+        webhook_sender.send("job_completed", {
+            "job_id": job_id,
+            "playbook": playbook,
+            "status": status
+        })
+
     except Exception as e:
         logger.error(f"Error in job {job_id}: {str(e)}")
         jobs[job_id]['status'] = 'error'
         jobs[job_id]['error'] = str(e)
         save_job_to_disk(job_id, jobs[job_id])
+
         PLAYBOOK_RUNS.labels(playbook=playbook, status='error').inc()
+
+        webhook_sender.send("job_error", {
+            "job_id": job_id,
+            "playbook": playbook,
+            "status": "error",
+            "error": str(e)
+        })
     finally:
         ACTIVE_JOBS.dec()
         duration = (datetime.now() - start_time).total_seconds()

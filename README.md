@@ -20,6 +20,7 @@
 - **Playbook History** Keep track of playbook executions and their status.
 - **API Documentation** Swagger UI documentation for easy exploration of the API endpoints.
 - **Metrics** Exposes Prometheus metrics for playbook runs, durations, and active jobs.
+- **Webhook Notifications** Send notifications to Slack, Discord, or custom webhooks for job events.
 
 <b>NOTE</b> Project is usable but still in early development
 
@@ -75,6 +76,12 @@ You can customize the following settings:
 host: '127.0.0.1'
 port: 5001
 debug: false
+
+# webhook configuration
+# webhook:
+#   url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+#   type: "slack"  # Options: slack, discord, generic
+#   timeout: 5  # Optional, defaults to 5 seconds
 
 # ansible-runner
 suppress_ansible_output: false
@@ -158,6 +165,41 @@ WantedBy=multi-user.target
 * <code>GET /ansible/job/<job_id>: Get job status</code>
 * <code>GET /ansible/job/<job_id>/output: Get job output</code>
 * <code>GET /health: Health check endpoint</code>
+
+## Webhook Configuration
+Ansible-Link supports sending webhook notifications for job events. You can configure webhooks for Slack, Discord, or a generic endpoint. Add the following to your config.yml:
+
+```yaml
+webhook:
+  url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+  type: "slack"  # Options: slack, discord, generic
+  timeout: 5  # Optional, defaults to 5 seconds
+```
+
+or leave it commented out to disable webhooks
+
+**url** The webhook URL for your chosen platform.
+**type** The type of webhook (slack, discord, or generic).
+**timeout** The timeout for webhook requests in seconds (optional, default is 5 seconds).
+
+Only Slack and Discord are supported for now, you can also use `generic` which will send the base JSON payload:
+```json
+  base_payload = {
+      "event_type": event_type,
+      "job_id": job_data['job_id'],
+      "playbook": job_data['playbook'],
+      "status": job_data['status'],
+      "timestamp": datetime.now().isoformat()
+  }
+```
+
+The following notifcations are sent:
+
+* Job Started
+* Job Completed (success or failure)
+* Job Error
+
+View `webhook.py` for more info.
 
 ## Usage
 
