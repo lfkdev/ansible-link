@@ -9,44 +9,38 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v2
-    
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
-    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    
     - name: Create config file
       run: |
         echo "playbook_dir: ./test_playbooks" > ansible_link/config.yml
         echo "inventory_file: ./test_inventory.ini" >> ansible_link/config.yml
         echo "job_storage_dir: ./test_job_storage" >> ansible_link/config.yml
-        mkdir test_playbooks test_job_storage
+        mkdir -p test_playbooks test_job_storage
         touch test_inventory.ini
-    
     - name: Create test playbook
       run: |
-        touch test_playbooks/test_playbook.yml
         echo "- hosts: localhost" > test_playbooks/test_playbook.yml
         echo "  tasks:" >> test_playbooks/test_playbook.yml
         echo "    - name: Output OK" >> test_playbooks/test_playbook.yml
         echo "      debug:" >> test_playbooks/test_playbook.yml
         echo "        msg: OK" >> test_playbooks/test_playbook.yml
-
-    - name: Set ANSIBLE_API_CONFIG
-      run: export ANSIBLE_API_CONFIG=$GITHUB_WORKSPACE/test-config.yml
-
-    - name: show structure
+    - name: Set PYTHONPATH and ANSIBLE_API_CONFIG
+      run: |
+        echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+        echo "ANSIBLE_API_CONFIG=$GITHUB_WORKSPACE/ansible_link/config.yml" >> $GITHUB_ENV
+    - name: Show structure and environment
       run: |
         ls -R
+        echo "PYTHONPATH: $PYTHONPATH"
         echo "ANSIBLE_API_CONFIG: $ANSIBLE_API_CONFIG"
-
     - name: Run tests
       run: python -m unittest discover tests

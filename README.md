@@ -25,7 +25,7 @@
 <b>NOTE</b> Project is usable but still in early development
 
 ## Motivation
-Searched for a way to run our playbooks automated without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I made Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely. Essentially a RESTful API sitting on top of [ansible-runner](https://github.com/ansible/ansible-runner)
+Searched for a way to run our playbooks automated without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I made Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely. Essentially a RESTful API sitting on top of [ansible-runner](https://github.com/ansible/ansible-runner).
 
 ## Prerequisites
 * Python 3.7+
@@ -62,6 +62,14 @@ The API documentation is available via the Swagger UI.
 
 <img src="docs.png" alt="Ansible Link Docs">
 
+## API Endpoints
+
+* <code>POST /ansible/playbook: Execute a playbook</code>
+* <code>GET /ansible/jobs: List all jobs</code>
+* <code>GET /ansible/job/<job_id>: Get job status</code>
+* <code>GET /ansible/job/<job_id>/output: Get job output</code>
+* <code>GET /health: Health check endpoint</code>
+
 ## Configuration
 The API configuration is stored in the `config.yml` file. 
 If you move your config to a different location you can use `ANSIBLE_API_CONFIG` 
@@ -72,21 +80,24 @@ $ export ANSIBLE_API_CONFIG='/etc/ansible-link/config.yml'
 You can customize the following settings:
 
 ```yaml
+# webhook
+# webhook:
+#   url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+#   type: "slack" # "slack", "discord" or "generic" supported
+#   timeout: 5  # optional, default 5 seconds
+
 # flask
 host: '127.0.0.1'
 port: 5001
 debug: false
 
-# webhook configuration
-# webhook:
-#   url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
-#   type: "slack"  # Options: slack, discord, generic
-#   timeout: 5  # Optional, defaults to 5 seconds
-
 # ansible-runner
 suppress_ansible_output: false
 omit_event_data: false
 only_failed_event_data: false
+
+# promtetheus
+metrics_port: 9090
 
 # general
 playbook_dir: '/etc/ansible/'
@@ -94,7 +105,7 @@ inventory_file: '/etc/ansible/environments/hosts'
 job_storage_dir: '/var/lib/ansible-link/job-storage'
 log_level: 'INFO'
 
-# ansible-link (leave blank to allow all)
+# ansible-link
 playbook_whitelist: []
 # playbook_whitelist:
 #   - monitoring.yml
@@ -158,14 +169,6 @@ WantedBy=multi-user.target
                 └── playbook_name_20230624_130000_job_id.json
 ```
 
-### API Endpoints
-
-* <code>POST /ansible/playbook: Execute a playbook</code>
-* <code>GET /ansible/jobs: List all jobs</code>
-* <code>GET /ansible/job/<job_id>: Get job status</code>
-* <code>GET /ansible/job/<job_id>/output: Get job output</code>
-* <code>GET /health: Health check endpoint</code>
-
 ## Webhook Configuration
 Ansible-Link supports sending webhook notifications for job events. You can configure webhooks for Slack, Discord, or a generic endpoint. Add the following to your config.yml:
 
@@ -185,7 +188,7 @@ or leave it commented out to disable webhooks
 Only Slack and Discord are supported for now, you can also use `generic` which will send the base JSON payload:
 
 ```json
-base_payload = {
+{
     "event_type": event_type,
     "job_id": job_data['job_id'],
     "playbook": job_data['playbook'],
