@@ -178,19 +178,20 @@ webhook:
 
 or leave it commented out to disable webhooks
 
-**url** The webhook URL for your chosen platform.
-**type** The type of webhook (slack, discord, or generic).
-**timeout** The timeout for webhook requests in seconds (optional, default is 5 seconds).
+* **url** The webhook URL for your chosen platform.
+* **type** The type of webhook (slack, discord, or generic).
+* **timeout** The timeout for webhook requests in seconds (optional, default is 5 seconds).
 
 Only Slack and Discord are supported for now, you can also use `generic` which will send the base JSON payload:
+
 ```json
-  base_payload = {
-      "event_type": event_type,
-      "job_id": job_data['job_id'],
-      "playbook": job_data['playbook'],
-      "status": job_data['status'],
-      "timestamp": datetime.now().isoformat()
-  }
+base_payload = {
+    "event_type": event_type,
+    "job_id": job_data['job_id'],
+    "playbook": job_data['playbook'],
+    "status": job_data['status'],
+    "timestamp": datetime.now().isoformat()
+}
 ```
 
 The following notifcations are sent:
