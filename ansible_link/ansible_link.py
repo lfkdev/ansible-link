@@ -165,7 +165,8 @@ jobs = {} # memory job storage
 
 def save_job_to_disk(job_id, job_data):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{job_data['playbook']}_{timestamp}_{job_id}.json"
+    base_playbook_name = os.path.basename(job_data['playbook']).replace('.yml', '_yml').replace('.yaml', '_yaml')  
+    filename = f"{base_playbook_name}_{timestamp}_{job_id}.json"
     file_path = job_storage_dir / filename
     with open(file_path, 'w') as f:
         json.dump(job_data, f, indent=2)
