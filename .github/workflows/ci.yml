@@ -72,7 +72,7 @@ jobs:
         echo "VERSION=$(python -c "from ansible_link.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
     - name: Create zip artifact
       run: |
-        zip -r ansible-link-${{ env.VERSION }}.zip ansible_link
+        zip -r ansible-link-${{ env.VERSION }}.zip ansible_link -x "*.pyc" "*__pycache__*"
     - name: Create hash file
       run: |
         sha256sum ansible-link-${{ env.VERSION }}.zip > ansible-link-${{ env.VERSION }}.sha256

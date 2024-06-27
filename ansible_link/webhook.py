@@ -31,7 +31,6 @@ class WebhookSender:
             color = "#36a64f" if job_data['status'] in ['completed', 'started'] else "#ff0000"
             fields = [
                 {"title": "Status", "value": job_data['status'], "short": True},
-                {"title": "Job ID", "value": job_data['job_id'], "short": True}
             ]
             if 'error' in job_data:
                 fields.append({"title": "Error", "value": job_data['error'], "short": False})
@@ -42,7 +41,7 @@ class WebhookSender:
                     "title": job_data['playbook'],
                     "text": f"Event: {event_type.replace('_', ' ').title()}",
                     "fields": fields,
-                    "footer": "Ansible-Link",
+                    "footer": f"Ansible-Link | {job_data['job_id']}",
                     "ts": int(datetime.now().timestamp())
                 }]
             }
