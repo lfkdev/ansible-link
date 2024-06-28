@@ -60,7 +60,7 @@ jobs:
         cat test_playbooks/test_playbook.yml
     - name: run tests
       run: |
-        python -m unittest discover tests
+        python -m unittest discover src
 
   build-and-release:
       needs: ansible-link-ci
