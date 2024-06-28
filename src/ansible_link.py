@@ -314,42 +314,45 @@ def health_check():
 def version_check():
     return jsonify({"version": VERSION}), 200
 
-def main():
-    global config
+def init_app():
+    global config, logger, job_storage_dir, compiled_whitelist, webhook_sender, PLAYBOOK_RUNS, PLAYBOOK_DURATION, ACTIVE_JOBS
+    
     config = load_config()
 
-    ANSIBLE_LINK_LOGO_BASE64 = "ICAgX19fICAgICAgICAgICAgXyBfXyAgIF9fICAgICAgICBfXyAgIF8gICAgICBfXyAgCiAgLyBfIHwgX19fICBfX18gKF8pIC8gIC8gL19fIF9fX18vIC8gIChfKV9fICAvIC9fXwogLyBfXyB8LyBfIFwoXy08LyAvIF8gXC8gLyAtXylfX18vIC9fXy8gLyBfIFwvICAnXy8KL18vIHxfL18vL18vX19fL18vXy5fXy9fL1xfXy8gICAvX19fXy9fL18vL18vXy9cX1wgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA="
-    ANSIBLE_LINK_LOGO = base64.b64decode(ANSIBLE_LINK_LOGO_BASE64).decode('utf-8')
-    print(ANSIBLE_LINK_LOGO)
-
-    global logger
     log_level = getattr(logging, config.get('log_level', 'INFO').upper())
     logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
     logger.info(f"Logging level set to {logging.getLevelName(log_level)}")
     logger.info(f"Initializing Ansible-Link, version {VERSION} - {prefix}")
 
-    global job_storage_dir
     job_storage_dir = Path(config.get('job_storage_dir', Path(__file__).parent.absolute() / 'job-storage'))
     job_storage_dir.mkdir(parents=True, exist_ok=True)
 
-    global compiled_whitelist
     playbook_whitelist = config.get('playbook_whitelist', [])
-    compiled_whitelist = [re.compile(pattern) for pattern in playbook_whitelist] # regex whitelist support
+    compiled_whitelist = [re.compile(pattern) for pattern in playbook_whitelist]
 
-    global webhook_sender
     webhook_sender = WebhookSender(config.get('webhook', {}))
 
-    global PLAYBOOK_RUNS, PLAYBOOK_DURATION, ACTIVE_JOBS
     PLAYBOOK_RUNS = Counter('ansible_link_playbook_runs_total', 'Total number of playbook runs', ['playbook', 'status'])
     PLAYBOOK_DURATION = Histogram('ansible_link_playbook_duration_seconds', 'Duration of playbook runs in seconds', ['playbook'])
     ACTIVE_JOBS = Gauge('ansible_link_active_jobs', 'Number of currently active jobs')
+
+    return app
+
+def main():
+    app = init_app()
+    
+    ANSIBLE_LINK_LOGO_BASE64 = "ICAgX19fICAgICAgICAgICAgXyBfXyAgIF9fICAgICAgICBfXyAgIF8gICAgICBfXyAgCiAgLyBfIHwgX19fICBfX18gKF8pIC8gIC8gL19fIF9fX18vIC8gIChfKV9fICAvIC9fXwogLyBfXyB8LyBfIFwoXy08LyAvIF8gXC8gLyAtXylfX18vIC9fXy8gLyBfIFwvICAnXy8KL18vIHxfL18vL18vX19fL18vXy5fXy9fL1xfXy8gICAvX19fXy9fL18vL18vXy9cX1wgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA="
+    ANSIBLE_LINK_LOGO = base64.b64decode(ANSIBLE_LINK_LOGO_BASE64).decode('utf-8')
+    print(ANSIBLE_LINK_LOGO)
+
     metrics_port = config.get('metrics_port', 8000)
     start_http_server(metrics_port)
 
     logger.info(f"Metrics server started, port {metrics_port}")
 
     app.run(debug=config.get('debug', False), host=config.get('host', '127.0.0.1'), port=config.get('port', 5000))
+
 
 if __name__ == '__main__':
     main()

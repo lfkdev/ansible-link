@@ -3,16 +3,18 @@ import json
 import sys
 import os
 
-from ansible_link import app, load_config, VERSION
+from ansible_link import init_app, load_config, VERSION
 API_PATH=f'/api/v{VERSION.split(".")[0]}'
 
 class TestAnsibleLink(unittest.TestCase):
-    def setUp(self):
-        self.app = app.test_client()
-        self.app.testing = True
-
+    @classmethod
+    def setUpClass(cls):
+        cls.app = init_app()
+        cls.client = cls.app.test_client()
+        cls.app.testing = True
+        
     def test_health_check(self):
-        response = self.app.get('/health')
+        response = self.client.get('/health')
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'healthy')
@@ -40,7 +42,7 @@ class TestAnsibleLink(unittest.TestCase):
             'inventory': 'test_inventory.ini',
             'vars': {'test_var': 'test_value'}
         }
-        response = self.app.post(f'{API_PATH}/ansible/playbook', json=payload)
+        response = self.client.post(f'{API_PATH}/ansible/playbook', json=payload)
         self.assertEqual(response.status_code, 202)
         data = json.loads(response.data)
         self.assertIn('job_id', data)
