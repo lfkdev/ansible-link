@@ -3,8 +3,6 @@ name: Ansible-Link CI/CD
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   ansible-link-ci:
@@ -38,15 +36,15 @@ jobs:
               debug:
                 msg: "This is a test playbook"
         EOF
-    - name: Set PYTHONPATH and ANSIBLE_API_CONFIG
+    - name: Set PYTHONPATH and ANSIBLE_LINK_CONFIG_PATH
       run: |
         echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-        echo "ANSIBLE_API_CONFIG=$GITHUB_WORKSPACE/ansible_link/config.yml" >> $GITHUB_ENV
+        echo "ANSIBLE_LINK_CONFIG_PATH=$GITHUB_WORKSPACE/ansible_link/config.yml" >> $GITHUB_ENV
     - name: Show structure and environment
       run: |
         ls -R
         echo "PYTHONPATH: $PYTHONPATH"
-        echo "ANSIBLE_API_CONFIG: $ANSIBLE_API_CONFIG"
+        echo "ANSIBLE_LINK_CONFIG_PATH: $ANSIBLE_LINK_CONFIG_PATH"
         pip list
         cat test_playbooks/test_playbook.yml
     - name: Update import in ansible_link.py

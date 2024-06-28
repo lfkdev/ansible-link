@@ -5,7 +5,7 @@
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_restx import Api, Resource, fields
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 
 from version import VERSION
 from webhook import WebhookSender
@@ -32,7 +32,8 @@ api = Api(app,
           version='0.9',
           title='ANSIBLE-LINK',
           description='API for executing Ansible playbooks',
-          external_doc={'description': 'GitHub', 'url': 'https://github.com/lfkdev/ansible-link'}
+          external_doc={'description': 'GitHub', 'url': 'https://github.com/lfkdev/ansible-link'},
+          prefix='/api/v1'
 )
 
 ns = api.namespace('ansible', description='Ansible operations')
