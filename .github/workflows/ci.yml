@@ -10,23 +10,34 @@ jobs:
   ansible-link-ci:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.8'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    - name: Create config file
+    - name: Update configuration
       run: |
-        echo "playbook_dir: ./test_playbooks" > ansible_link/config.yml
-        echo "inventory_file: ./test_inventory.ini" >> ansible_link/config.yml
-        echo "job_storage_dir: ./test_job_storage" >> ansible_link/config.yml
+        sed -i '/^playbook_dir:/d' config.yml
+        sed -i '/^inventory_file:/d' config.yml
+        sed -i '/^job_storage_dir:/d' config.yml
+        sed -i '/^log_level:/d' config.yml
+        sed -i '/^playbook_whitelist:/d' config.yml
+
+        echo "playbook_dir: './test_playbooks'" >> config.yml
+        echo "inventory_file: './test_inventory.ini'" >> config.yml
+        echo "job_storage_dir: './test_job_storage'" >> config.yml
+        echo "log_level: 'DEBUG'" >> config.yml  
+        echo "playbook_whitelist:" >> config.yml
+        echo "  - test_.+\.yml$" >> config.yml
+    - name: create test files/folders
+      run: | 
         mkdir -p test_playbooks test_job_storage
         touch test_inventory.ini
-    - name: Create test playbook
+    - name: create test playbook
       run: |
         cat << EOF > test_playbooks/test_playbook.yml
         ---
@@ -38,22 +49,12 @@ jobs:
               debug:
                 msg: "This is a test playbook"
         EOF
-    - name: Set PYTHONPATH and ANSIBLE_LINK_CONFIG_PATH
-      run: |
-        echo "PYTHONPATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-        echo "ANSIBLE_LINK_CONFIG_PATH=$GITHUB_WORKSPACE/ansible_link/config.yml" >> $GITHUB_ENV
-    - name: Show structure and environment
+    - name: show structure and files
       run: |
         ls -R
-        echo "PYTHONPATH: $PYTHONPATH"
-        echo "ANSIBLE_LINK_CONFIG_PATH: $ANSIBLE_LINK_CONFIG_PATH"
-        pip list
+        cat config.yml
         cat test_playbooks/test_playbook.yml
-    - name: Update import in ansible_link.py
-      run: |
-        sed -i 's/from webhook import WebhookSender/from ansible_link.webhook import WebhookSender/' ansible_link/ansible_link.py
-        sed -i 's/from version import VERSION/from ansible_link.version import VERSION/' ansible_link/ansible_link.py
-    - name: Run tests
+    - name: run tests
       run: |
         python -m unittest discover tests
 
@@ -61,23 +62,23 @@ jobs:
     needs: ansible-link-ci
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.8'
     - name: Get version
       id: get_version
       run: |
-        echo "VERSION=$(python -c "from ansible_link.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
+        cd src && echo "VERSION=$(python -c "from version import VERSION; print(VERSION)")" >> $GITHUB_ENV
     - name: Create zip artifact
       run: |
-        zip -r ansible-link-${{ env.VERSION }}.zip ansible_link -x "*.pyc" "*__pycache__*"
+        zip -r ansible-link-${{ env.VERSION }}.zip src -x "*.pyc" "*__pycache__*" "test_*"
     - name: Create hash file
       run: |
         sha256sum ansible-link-${{ env.VERSION }}.zip > ansible-link-${{ env.VERSION }}.sha256
     - name: Upload artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: ansible-link-${{ env.VERSION }}
         path: |
