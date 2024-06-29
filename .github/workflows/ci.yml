@@ -87,7 +87,6 @@ jobs:
           sha256sum ansible-link-${{ steps.get_version.outputs.VERSION }}.zip > ansible-link-${{ steps.get_version.outputs.VERSION }}.sha256
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             ansible-link-${{ steps.get_version.outputs.VERSION }}.zip
