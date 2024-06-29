@@ -85,7 +85,7 @@ def validate_playbook_request(data, config):
     if 'inventory' in data:
         inventory_path = Path(data['inventory'])
         if not inventory_path.is_absolute():
-            inventory_path = Path(config['playbook_dir']) / inventory_path
+            inventory_path = Path(__file__).parent.absolute() / inventory_path
     else:
         inventory_path = Path(config['inventory_file'])
     
@@ -244,7 +244,7 @@ class AnsiblePlaybook(Resource):
     def post(self):
         try:
             data = api.payload
-
+            logger.debug(f"Received /playbook request: {data}")
             validation_errors = validate_playbook_request(data, config)
             if validation_errors:
                 logger.error(f"Validation errors: {validation_errors}")

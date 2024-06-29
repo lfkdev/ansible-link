@@ -39,7 +39,7 @@ jobs:
       run: | 
         mkdir -p test_playbooks test_job_storage
         touch test_inventory.ini
-    - name: create test playbook
+    - name: Create test playbook
       working-directory: ${{ github.workspace }}/src
       run: |
         cat << EOF > test_playbooks/test_playbook.yml
@@ -55,8 +55,12 @@ jobs:
     - name: Show structure and files
       working-directory: ${{ github.workspace }}/src
       run: |
+        pwd
+        echo "LS --------------------"
         ls -R
+        echo "CONFIG --------------------"
         cat config.yml
+        echo "PLAYBOOK --------------------"
         cat test_playbooks/test_playbook.yml
     - name: Run tests
       run: |
