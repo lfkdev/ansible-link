@@ -84,12 +84,13 @@ def validate_playbook_request(data, config):
 
     if 'inventory' in data:
         inventory_path = Path(data['inventory'])
-        if not inventory_path.is_file():
-            errors.append(f"Inventory file not found: {inventory_path}")
+        if not inventory_path.is_absolute():
+            inventory_path = Path(config['playbook_dir']) / inventory_path
     else:
         inventory_path = Path(config['inventory_file'])
-        if not inventory_path.is_file():
-            errors.append(f"Default inventory file not found: {inventory_path}")
+    
+    if not inventory_path.is_file():
+        errors.append(f"Inventory file not found: {inventory_path}")
     data['inventory_path'] = str(inventory_path)
 
     if 'vars' in data and not isinstance(data['vars'], dict):
