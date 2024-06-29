@@ -79,7 +79,6 @@ jobs:
       with:
         python-version: '3.8'
     - name: Get version
-      working-directory: ${{ github.workspace }}/src
       id: get_version
       run: |
         echo "VERSION=$(python -c "from src.version import VERSION; print(VERSION)")" >> $GITHUB_OUTPUT
@@ -105,7 +104,7 @@ jobs:
           echo "VERSION=$(python -c "from src.version import VERSION; print(VERSION)")" >> $GITHUB_OUTPUT
       - name: Create zip artifact
         run: |
-          zip -r ansible-link-${{ steps.get_version.outputs.VERSION }}.zip src -x "*.pyc" "*__pycache__*" "test_*"
+          zip -r ansible-link-${{ steps.get_version.outputs.VERSION }}.zip src -x "*.pyc" "*__pycache__*" "*test_*"
       - name: Create hash file
         run: |
           sha256sum ansible-link-${{ steps.get_version.outputs.VERSION }}.zip > ansible-link-${{ steps.get_version.outputs.VERSION }}.sha256
