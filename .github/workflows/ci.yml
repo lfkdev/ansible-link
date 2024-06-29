@@ -66,12 +66,12 @@ jobs:
       run: |
         python -m unittest discover src
 
-  create-tag:
+  create-tag-and-release:
     needs: ansible-link-ci
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Set up Python
@@ -82,42 +82,28 @@ jobs:
       id: get_version
       run: |
         echo "VERSION=$(python -c "from src.version import VERSION; print(VERSION)")" >> $GITHUB_OUTPUT
-    - name: Create and push tag
+    - name: Create tag
       run: |
         git config user.name github-actions
         git config user.email github-actions@github.com
         git tag -a v${{ steps.get_version.outputs.VERSION }} -m "Release version ${{ steps.get_version.outputs.VERSION }}"
         git push origin v${{ steps.get_version.outputs.VERSION }}
-
-  build-and-release:
-      needs: ansible-link-ci
-      runs-on: ubuntu-latest
-      steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-      - name: Get version
-        id: get_version
-        run: |
-          echo "VERSION=$(python -c "from src.version import VERSION; print(VERSION)")" >> $GITHUB_OUTPUT
-      - name: Create zip artifact
-        run: |
-          zip -r ansible-link-${{ steps.get_version.outputs.VERSION }}.zip src -x "*.pyc" "*__pycache__*" "*test_*"
-      - name: Create hash file
-        run: |
-          sha256sum ansible-link-${{ steps.get_version.outputs.VERSION }}.zip > ansible-link-${{ steps.get_version.outputs.VERSION }}.sha256
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            ansible-link-${{ steps.get_version.outputs.VERSION }}.zip
-            ansible-link-${{ steps.get_version.outputs.VERSION }}.sha256
-          name: Release ${{ steps.get_version.outputs.VERSION }}
-          body_path: ${{ github.workspace }}/CHANGELOG.md
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create zip artifact
+      run: |
+        zip -r ansible-link-${{ steps.get_version.outputs.VERSION }}.zip src -x "*.pyc" "*__pycache__*" "*test_*"
+    - name: Create hash file
+      run: |
+        find src -type f -exec sha256sum {} + > ansible-link-${{ steps.get_version.outputs.VERSION }}.sha256
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.get_version.outputs.VERSION }}
+        name: Release ${{ steps.get_version.outputs.VERSION }}
+        body_path: ${{ github.workspace }}/CHANGELOG.md
+        files: |
+          ansible-link-${{ steps.get_version.outputs.VERSION }}.zip
+          ansible-link-${{ steps.get_version.outputs.VERSION }}.sha256
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
