@@ -90,7 +90,7 @@ jobs:
         git push origin v${{ steps.get_version.outputs.VERSION }}
     - name: Create zip artifact
       run: |
-        zip -r ansible-link-${{ steps.get_version.outputs.VERSION }}.zip src -x "*.pyc" "*__pycache__*" "*test_*"
+        (cd src && zip -r ../ansible-link-${{ steps.get_version.outputs.VERSION }}.zip . -x "*.pyc" "*__pycache__*" "*test_*")
     - name: Create hash file
       run: |
         find src -type f -exec sha256sum {} + > ansible-link-${{ steps.get_version.outputs.VERSION }}.sha256

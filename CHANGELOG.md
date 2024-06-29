@@ -1,4 +1,1 @@
-- Better path handling
-- Version bump of actions
-- Cleaner tests
-- **BREAKING** `/api/v<N>` versioning pathing added for all endpoints
+- HOTFIX stripe parent folder in zip
