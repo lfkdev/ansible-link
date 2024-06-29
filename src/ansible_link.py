@@ -47,10 +47,18 @@ def load_config():
     print(f"{datetime.now().isoformat()} - INFO - Loading configuration from {config_path}")
     try:
         with open(config_path, 'r') as f:
-            return yaml.safe_load(f)
+            config = yaml.safe_load(f)
+        
+        # resolve relative paths
+        for key in ['playbook_dir', 'inventory_file', 'job_storage_dir']:
+            if key in config and not os.path.isabs(config[key]):
+                config[key] = os.path.abspath(os.path.join(current_dir, config[key]))
+                print(f"{datetime.now().isoformat()} - INFO - Resolved {key} to {config[key]}")
+        
+        return config
     except Exception as e:
         print(f"{datetime.now().isoformat()} - ERROR - Failed to load configuration: {e} - is ANSIBLE_LINK_CONFIG_PATH set correctly?")
-        raise   
+        raise
 
 def validate_playbook(playbook):
     playbook_path = Path(config['playbook_dir']) / playbook

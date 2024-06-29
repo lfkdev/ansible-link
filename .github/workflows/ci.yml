@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python
+    - name: set up python
       uses: actions/setup-python@v5
       with:
         python-version: '3.8'
@@ -34,7 +34,7 @@ jobs:
         echo "log_level: 'DEBUG'" >> config.yml  
         echo "playbook_whitelist:" >> config.yml
         echo "  - test_.+\.yml$" >> config.yml
-    - name: create test files/folders
+    - name: Create test files/folders
       working-directory: ${{ github.workspace }}/src
       run: | 
         mkdir -p test_playbooks test_job_storage
@@ -52,13 +52,13 @@ jobs:
               debug:
                 msg: "This is a test playbook"
         EOF
-    - name: show structure and files
+    - name: Show structure and files
       working-directory: ${{ github.workspace }}/src
       run: |
         ls -R
         cat config.yml
         cat test_playbooks/test_playbook.yml
-    - name: run tests
+    - name: Run tests
       run: |
         python -m unittest discover src
 
