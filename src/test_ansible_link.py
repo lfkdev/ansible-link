@@ -12,8 +12,6 @@ class TestAnsibleLink(unittest.TestCase):
         cls.app = init_app()
         cls.client = cls.app.test_client()
         cls.app.testing = True
-
-        cls.job_storage = cls.app.config['job_storage']
         
     def test_health_check(self):
         response = self.client.get('/health')
@@ -51,6 +49,7 @@ class TestAnsibleLink(unittest.TestCase):
         self.assertEqual(data['status'], 'running')
 
     def test_job_creation_and_retrieval(self):
+        config = load_config()
         payload = {
             'playbook': 'test_playbook.yml',
             'inventory': 'test_inventory.ini',
@@ -63,10 +62,10 @@ class TestAnsibleLink(unittest.TestCase):
         
         time.sleep(2)
         
-        job_file_path = Path(self.config['job_storage_dir']) / f"{job_id}.json"
+        job_file_path = Path(config['job_storage_dir']) / f"{job_id}.json"
         self.assertTrue(job_file_path.exists(), f"Job file {job_file_path} does not exist")
         
-        job_folder_path = Path(self.config['job_storage_dir']) / job_id
+        job_folder_path = Path(config['job_storage_dir']) / job_id
         self.assertTrue(job_folder_path.exists(), f"Job folder {job_folder_path} does not exist")
         
         response = self.client.get(f'{API_PATH}/ansible/job/{job_id}')
