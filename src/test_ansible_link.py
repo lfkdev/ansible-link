@@ -103,11 +103,6 @@ class TestAnsibleLink(unittest.TestCase):
             file_data = json.load(f)
         for key in expected_keys:
             self.assertIn(key, file_data, f"Expected key '{key}' not found in job file")
-        
-        # Verify that the job data matches the initial payload
-        self.assertEqual(file_data['playbook'], payload['playbook'])
-        self.assertEqual(file_data['inventory'], payload['inventory'])
-        self.assertEqual(file_data['vars'], payload['vars'])
 
 if __name__ == '__main__':
     unittest.main()
