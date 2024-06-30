@@ -193,7 +193,7 @@ def run_playbook(job_id, playbook_path, inventory_path, vars, forks=5, verbosity
                                     runner.stdout.read(), 
                                     runner.stderr.read(), 
                                     runner.stats,
-                                    ansible_cli_command=ansible_command)
+                                    ansible_command)
 
         logger.info(f"Job {job_id} completed with status: {status} | {runner.status}")
 

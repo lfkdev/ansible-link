@@ -69,15 +69,30 @@ class TestAnsibleLink(unittest.TestCase):
         self.assertTrue(job_folder_path.exists(), f"Job folder {job_folder_path} does not exist")
         
         response = self.client.get(f'{API_PATH}/ansible/job/{job_id}')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, f"Failed to retrieve job {job_id}, status code: {response.status_code}")
         job_data = json.loads(response.data)
         
         response = self.client.get(f'{API_PATH}/ansible/jobs')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, f"Failed to retrieve jobs list, status code: {response.status_code}")
         jobs_data = json.loads(response.data)
         
         self.assertIn(job_id, jobs_data, f"Job {job_id} not found in jobs list")
         
+        max_wait_time = 10
+        wait_interval = 1
+        elapsed_time = 0
+
+        while elapsed_time < max_wait_time:
+            response = self.client.get(f'{API_PATH}/ansible/job/{job_id}')
+            self.assertEqual(response.status_code, 200, f"Failed to retrieve job {job_id}, status code: {response.status_code}")
+            job_data = json.loads(response.data)
+            if job_data['status'] != 'running':
+                break
+            time.sleep(wait_interval)
+            elapsed_time += wait_interval
+
+        self.assertNotEqual(job_data['status'], 'running', f"Job {job_id} is still running after {max_wait_time} seconds")
+
         # check keys using endpoint
         expected_keys = ['status', 'playbook', 'inventory', 'vars', 'start_time', 'ansible_cli_command']
         for key in expected_keys:
