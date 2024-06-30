@@ -1,7 +1,7 @@
 import unittest
 import json
-import sys
-import os
+import time
+from pathlib import Path
 
 from ansible_link import init_app, load_config, VERSION
 API_PATH=f'/api/v{VERSION.split(".")[0]}'
@@ -47,6 +47,50 @@ class TestAnsibleLink(unittest.TestCase):
         data = json.loads(response.data)
         self.assertIn('job_id', data)
         self.assertEqual(data['status'], 'running')
+
+    def test_job_creation_and_retrieval(self):
+        payload = {
+            'playbook': 'test_playbook.yml',
+            'inventory': 'test_inventory.ini',
+            'vars': {'test_var': 'test_value'}
+        }
+        response = self.client.post(f'{API_PATH}/ansible/playbook', json=payload)
+        self.assertEqual(response.status_code, 202)
+        job_data = json.loads(response.data)
+        job_id = job_data['job_id']
+        
+        time.sleep(2)
+        
+        job_file_path = Path(self.config['job_storage_dir']) / f"{job_id}.json"
+        self.assertTrue(job_file_path.exists(), f"Job file {job_file_path} does not exist")
+        
+        job_folder_path = Path(self.config['job_storage_dir']) / job_id
+        self.assertTrue(job_folder_path.exists(), f"Job folder {job_folder_path} does not exist")
+        
+        response = self.client.get(f'{API_PATH}/ansible/job/{job_id}')
+        self.assertEqual(response.status_code, 200)
+        job_data = json.loads(response.data)
+        
+        response = self.client.get(f'{API_PATH}/ansible/jobs')
+        self.assertEqual(response.status_code, 200)
+        jobs_data = json.loads(response.data)
+        
+        self.assertIn(job_id, jobs_data, f"Job {job_id} not found in jobs list")
+        
+        # check keys using endpoint
+        expected_keys = ['status', 'playbook', 'inventory', 'vars', 'start_time', 'ansible_cli_command']
+        for key in expected_keys:
+            self.assertIn(key, job_data, f"Expected key '{key}' not found in job data")
+        
+        # check keys using file on disk
+        with open(job_file_path, 'r') as f:
+            file_data = json.load(f)
+        for key in expected_keys:
+            self.assertIn(key, file_data, f"Expected key '{key}' not found in job file")
+        
+        self.assertEqual(file_data['playbook'], payload['playbook'])
+        self.assertEqual(file_data['inventory'], payload['inventory'])
+        self.assertEqual(file_data['vars'], payload['vars'])
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,7 +1,9 @@
-# ANSIBLE-LINK (webhook module)
-# info: github.com/lfkdev/ansible-link
-# author: l.klostermann@pm.me
-# license: MPL2
+"""
+ANSIBLE-LINK class for webhooks
+Info: github.com/lfkdev/ansible-link
+Author: l.klostermann@pm.me
+License: MPL2
+"""
 
 import requests
 from datetime import datetime

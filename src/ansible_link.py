@@ -8,7 +8,6 @@ License: MPL2
 
 import os
 import re
-import json
 import uuid
 import yaml
 import base64
@@ -18,16 +17,16 @@ from datetime import datetime
 from pathlib import Path
 
 import ansible_runner
+from ansible_runner.config.runner import RunnerConfig
 from flask import Flask, jsonify
 from flask_restx import Api, Resource, fields
-from werkzeug.middleware.proxy_fix import ProxyFix
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
 
 from version import VERSION
 from webhook import WebhookSender
+from job_storage import JobStorage
 
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(app.wsgi_app)
 prefix=f'/api/v{VERSION.split(".")[0]}'
 api = Api(app, 
           version='0.9',
@@ -39,6 +38,24 @@ api = Api(app,
 
 ns = api.namespace('ansible', description='Ansible operations')
 
+playbook_model = api.model('PlaybookRequest', {
+    'playbook': fields.String(required=True, description='Playbook name (e.g., "site.yml")'),
+    'inventory': fields.String(description='Inventory file name. If not provided, the default inventory will be used.'),
+    'vars': fields.Raw(description='Variables for the playbook as a dictionary'),
+    'forks': fields.Integer(description='Number of parallel processes to use. Default is 5.', default=5),
+    'verbosity': fields.Integer(description='Ansible verbosity level (0-4). Default is 0.', default=0, min=0, max=4),
+    'limit': fields.String(description='Limit the playbook run to specific hosts or groups (e.g., "webservers,dbservers")'),
+    'tags': fields.String(description='Comma-separated string of tags to run in the playbook (e.g., "tag1,tag2")'),
+    'skip_tags': fields.String(description='Comma-separated string of tags to skip in the playbook (e.g., "tag3,tag4")'),
+    'cmdline': fields.String(description='Custom command-line arguments for Ansible')
+})
+
+job_model = api.model('JobResponse', {
+    'job_id': fields.String(description='Unique job ID (UUID)'),
+    'status': fields.String(description='Current job status ("pending", "running", "completed", "failed", "error")'),
+    'errors': fields.List(fields.String, description='List of error messages, if any', allow_none=True)
+})
+
 def load_config():
     current_dir = Path(__file__).parent.absolute()
     default_config_path = current_dir / 'config.yml'
@@ -47,13 +64,13 @@ def load_config():
     try:
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
-        
+
         # resolve relative paths
         for key in ['playbook_dir', 'inventory_file', 'job_storage_dir']:
             if key in config and not os.path.isabs(config[key]):
                 config[key] = os.path.abspath(os.path.join(current_dir, config[key]))
                 print(f"{datetime.now().isoformat()} - INFO - Resolved {key} to {config[key]}")
-        
+
         return config
     except Exception as e:
         print(f"{datetime.now().isoformat()} - ERROR - Failed to load configuration: {e} - is ANSIBLE_LINK_CONFIG_PATH set correctly?")
@@ -129,35 +146,6 @@ def validate_playbook_request(data, config):
 
     return errors
 
-playbook_model = api.model('PlaybookRequest', {
-    'playbook': fields.String(required=True, description='Playbook name (e.g., "site.yml")'),
-    'inventory': fields.String(description='Inventory file name. If not provided, the default inventory will be used.'),
-    'vars': fields.Raw(description='Variables for the playbook as a dictionary'),
-    'forks': fields.Integer(description='Number of parallel processes to use. Default is 5.', default=5),
-    'verbosity': fields.Integer(description='Ansible verbosity level (0-4). Default is 0.', default=0, min=0, max=4),
-    'limit': fields.String(description='Limit the playbook run to specific hosts or groups (e.g., "webservers,dbservers")'),
-    'tags': fields.String(description='Comma-separated string of tags to run in the playbook (e.g., "tag1,tag2")'),
-    'skip_tags': fields.String(description='Comma-separated string of tags to skip in the playbook (e.g., "tag3,tag4")'),
-    'cmdline': fields.String(description='Custom command-line arguments for Ansible')
-})
-
-job_model = api.model('JobResponse', {
-    'job_id': fields.String(description='Unique job ID (UUID)'),
-    'status': fields.String(description='Current job status (e.g., "running", "completed", "failed", "error")'),
-    'errors': fields.List(fields.String, description='List of error messages, if any', allow_none=True)
-})
-
-jobs = {} # memory job storage
-
-def save_job_to_disk(job_id, job_data):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base_playbook_name = os.path.basename(job_data['playbook']).replace('.yml', '_yml').replace('.yaml', '_yaml')  
-    filename = f"{base_playbook_name}_{timestamp}_{job_id}.json"
-    file_path = job_storage_dir / filename
-    with open(file_path, 'w') as f:
-        json.dump(job_data, f, indent=2)
-    logger.info(f"Job {job_id} saved to {file_path}")
-
 def run_playbook(job_id, playbook_path, inventory_path, vars, forks=5, verbosity=0, limit=None, tags=None, skip_tags=None, cmdline=None):
     ACTIVE_JOBS.inc()
     start_time = datetime.now()
@@ -199,15 +187,15 @@ def run_playbook(job_id, playbook_path, inventory_path, vars, forks=5, verbosity
         logger.debug(f"Runner result: {result}")
 
         status = 'completed' if runner.status == 'successful' else 'failed'
-        jobs[job_id]['status'] = status
-        jobs[job_id]['stdout'] = runner.stdout.read()
-        jobs[job_id]['stderr'] = runner.stderr.read()
-        jobs[job_id]['stats'] = runner.stats
-        jobs[job_id]['ansible_command'] = ansible_command
 
-        logger.info(f"Job {job_id} completed with status: {status}")
-        
-        save_job_to_disk(job_id, jobs[job_id])
+        job_storage.update_job_status(job_id, status)
+        job_storage.save_job_output(job_id, 
+                                    runner.stdout.read(), 
+                                    runner.stderr.read(), 
+                                    runner.stats,
+                                    ansible_cli_command=ansible_command)
+
+        logger.info(f"Job {job_id} completed with status: {status} | {runner.status}")
 
         PLAYBOOK_RUNS.labels(playbook=playbook_path, status=status).inc()
 
@@ -219,9 +207,8 @@ def run_playbook(job_id, playbook_path, inventory_path, vars, forks=5, verbosity
 
     except Exception as e:
         logger.error(f"Error in job {job_id}: {str(e)}")
-        jobs[job_id]['status'] = 'error'
-        jobs[job_id]['error'] = str(e)
-        save_job_to_disk(job_id, jobs[job_id])
+        job_storage.update_job_status(job_id, 'error')
+        job_storage.save_job_output(job_id, '', str(e), {})
 
         PLAYBOOK_RUNS.labels(playbook=playbook_path, status='error').inc()
 
@@ -250,8 +237,8 @@ class AnsiblePlaybook(Resource):
                 return {'job_id': None, 'status': 'error', 'errors': validation_errors}, 400
 
             job_id = str(uuid.uuid4())
-            jobs[job_id] = {
-                'status': 'running',
+            job_data = {
+                'status': 'pending',
                 'playbook': data['playbook_path'],
                 'inventory': data['inventory_path'],
                 'vars': data.get('vars', {}),
@@ -263,8 +250,9 @@ class AnsiblePlaybook(Resource):
                 'cmdline': data.get('cmdline'),
                 'start_time': datetime.now().isoformat(),
             }
+            job_storage.save_job(job_id, job_data)
 
-            thread = threading.Thread(target=run_playbook, args=(
+            threading.Thread(target=run_playbook, args=(
                 job_id, 
                 data['playbook_path'],
                 data['inventory_path'],
@@ -275,8 +263,7 @@ class AnsiblePlaybook(Resource):
                 data.get('tags'),
                 data.get('skip_tags'),
                 data.get('cmdline')
-            ))
-            thread.start()
+            )).start()
 
             logger.info(f"Started job {job_id} for playbook {data['playbook']}")
             return {'job_id': job_id, 'status': 'running', 'errors': None}, 202
@@ -287,31 +274,17 @@ class AnsiblePlaybook(Resource):
 @ns.route('/jobs')
 class JobList(Resource):
     def get(self):
-        return {job_id: {'status': job['status'], 'playbook': job['playbook']} for job_id, job in jobs.items()}
+        return {job_id: {'status': job['status'], 'playbook': job['playbook']} for job_id, job in job_storage.get_all_jobs().items()}
 
 @ns.route('/job/<string:job_id>')
 @ns.param('job_id', 'The job identifier')
 class Job(Resource):
     def get(self, job_id):
-        if job_id not in jobs:
+        job = job_storage.get_job(job_id)
+        if job is None:
             logger.warning(f"Job {job_id} not found")
             api.abort(404, f"Job {job_id} not found")
-        return jobs[job_id]
-
-@ns.route('/job/<string:job_id>/output')
-@ns.param('job_id', 'The job identifier')
-class JobOutput(Resource):
-    def get(self, job_id):
-        if job_id not in jobs:
-            logger.warning(f"Job {job_id} not found")
-            api.abort(404, f"Job {job_id} not found")
-        if jobs[job_id]['status'] == 'running':
-            return {'message': 'Job is still running'}, 202
-        return {
-            'stdout': jobs[job_id].get('stdout', ''),
-            'stderr': jobs[job_id].get('stderr', ''),
-            'stats': jobs[job_id].get('stats', {})
-        }
+        return job
 
 # simple healthcheck placeholder
 @app.route('/health')
@@ -323,8 +296,8 @@ def version_check():
     return jsonify({"version": VERSION}), 200
 
 def init_app():
-    global config, logger, job_storage_dir, compiled_whitelist, webhook_sender, PLAYBOOK_RUNS, PLAYBOOK_DURATION, ACTIVE_JOBS
-    
+    global config, logger, job_storage, job_storage_dir, compiled_whitelist, webhook_sender, PLAYBOOK_RUNS, PLAYBOOK_DURATION, ACTIVE_JOBS
+
     config = load_config()
 
     log_level = getattr(logging, config.get('log_level', 'INFO').upper())
@@ -335,6 +308,7 @@ def init_app():
 
     job_storage_dir = Path(config.get('job_storage_dir', Path(__file__).parent.absolute() / 'job-storage'))
     job_storage_dir.mkdir(parents=True, exist_ok=True)
+    job_storage = JobStorage(config.get('job_storage_dir', Path(__file__).parent.absolute() / 'job-storage'))
 
     playbook_whitelist = config.get('playbook_whitelist', [])
     compiled_whitelist = [re.compile(pattern) for pattern in playbook_whitelist]
@@ -364,7 +338,5 @@ def main():
 if __name__ == '__main__':
     app = main()
     app.run(debug=config.get('debug', False), host=config.get('host', '127.0.0.1'), port=config.get('port', 5000))
-    
-    
-    
+
 
