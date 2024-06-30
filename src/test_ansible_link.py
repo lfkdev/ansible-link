@@ -12,6 +12,8 @@ class TestAnsibleLink(unittest.TestCase):
         cls.app = init_app()
         cls.client = cls.app.test_client()
         cls.app.testing = True
+
+        cls.job_storage = cls.app.config['job_storage']
         
     def test_health_check(self):
         response = self.client.get('/health')
@@ -88,6 +90,7 @@ class TestAnsibleLink(unittest.TestCase):
         for key in expected_keys:
             self.assertIn(key, file_data, f"Expected key '{key}' not found in job file")
         
+        # Verify that the job data matches the initial payload
         self.assertEqual(file_data['playbook'], payload['playbook'])
         self.assertEqual(file_data['inventory'], payload['inventory'])
         self.assertEqual(file_data['vars'], payload['vars'])
