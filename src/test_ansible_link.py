@@ -86,11 +86,11 @@ class TestAnsibleLink(unittest.TestCase):
             response = self.client.get(f'{API_PATH}/ansible/job/{job_id}')
             self.assertEqual(response.status_code, 200, f"Failed to retrieve job {job_id}, status code: {response.status_code}")
             job_data = json.loads(response.data)
-            if job_data['status'] != 'running':
+            if job_data['status'] not in ['running', 'pending']:
                 break
             time.sleep(wait_interval)
             elapsed_time += wait_interval
-
+        time.sleep(8)
         self.assertNotEqual(job_data['status'], 'running', f"Job {job_id} is still running after {max_wait_time} seconds")
 
         # check keys using endpoint
