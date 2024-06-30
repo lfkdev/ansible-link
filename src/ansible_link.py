@@ -359,11 +359,11 @@ def main():
 
     logger.info(f"Metrics server started, port {metrics_port}")
 
-    app.run(debug=config.get('debug', False), host=config.get('host', '127.0.0.1'), port=config.get('port', 5000))
-
+    return app
 
 if __name__ == '__main__':
-    main()
+    app = main()
+    app.run(debug=config.get('debug', False), host=config.get('host', '127.0.0.1'), port=config.get('port', 5000))
     
     
     

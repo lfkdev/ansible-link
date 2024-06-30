@@ -1,1 +1,3 @@
-- HOTFIX stripe parent folder in zip
+- Added install script
+- Import restructure
+- Minor changes for WSGI
