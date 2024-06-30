@@ -1,31 +1,30 @@
 #!/usr/bin/env python3
-# ANSIBLE-LINK
-# info: github.com/lfkdev/ansible-link
-# author: l.klostermann@pm.me
-# license: MPL2
+"""
+ANSIBLE-LINK
+Info: github.com/lfkdev/ansible-link
+Author: l.klostermann@pm.me
+License: MPL2
+"""
 
-from werkzeug.middleware.proxy_fix import ProxyFix
-from flask_restx import Api, Resource, fields
-from flask import Flask, jsonify
-
-from version import VERSION
-from webhook import WebhookSender
-
-from ansible_runner.config.runner import RunnerConfig
-import ansible_runner
-
-from prometheus_client import Counter, Histogram, Gauge, start_http_server
-
-from datetime import datetime
-from pathlib import Path
-import threading
-import logging
-import base64
+import os
+import re
 import json
 import uuid
 import yaml
-import os
-import re
+import base64
+import logging
+import threading
+from datetime import datetime
+from pathlib import Path
+
+import ansible_runner
+from flask import Flask, jsonify
+from flask_restx import Api, Resource, fields
+from werkzeug.middleware.proxy_fix import ProxyFix
+from prometheus_client import Counter, Histogram, Gauge, start_http_server
+
+from version import VERSION
+from webhook import WebhookSender
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)

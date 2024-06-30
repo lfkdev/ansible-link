@@ -91,6 +91,7 @@ jobs:
     - name: Create zip artifact
       run: |
         (cd src && zip -r ../ansible-link-${{ steps.get_version.outputs.VERSION }}.zip . -x "*.pyc" "*__pycache__*" "*test_*")
+        zip -j ansible-link-${{ steps.get_version.outputs.VERSION }}.zip requirements.txt
     - name: Create hash file
       run: |
         find src -type f -exec sha256sum {} + > ansible-link-${{ steps.get_version.outputs.VERSION }}.sha256
