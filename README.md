@@ -28,7 +28,8 @@
 Searched for a way to run our playbooks automated without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I made Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely. Essentially a RESTful API sitting on top of [ansible-runner](https://github.com/ansible/ansible-runner).
 
 ## Prerequisites
-* Your Ansible node
+* Ansible CLI installed
+* Your playbooks and inventory files
 
 ## Installation
 The fastest way to set up Ansible-Link is by using the provided `install.sh` script:

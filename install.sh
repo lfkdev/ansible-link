@@ -118,8 +118,7 @@ detect_ansible() {
     if [[ -d "/etc/ansible" ]]; then
         ANSIBLE_DIR="/etc/ansible"
     else
-        log "ERROR" "Could not find /etc/ansible directory. Please ensure Ansible is correctly installed."
-        exit 1
+        log "WARN" "Could not find /etc/ansible directory. Please configure correct path in $INSTALL_DIR/config.yml."
     fi
 }
 
@@ -205,7 +204,9 @@ main() {
     log "INFO" "The service is running and will start automatically on boot. ✔"
     log "INFO" "You can check the status with: systemctl status ansible-link. ✔"
     log "WARN" "Ansible user defaults to root. ⚠"
-    log "INFO" "Please check the configuration and if needed change the default values in $INSTALL_DIR/config.yml. ⚠"
+    log "INFO" "Change the default values in $INSTALL_DIR/config.yml if needed."
+    echo 
+    log "INFO" "To access Ansible-Link, go to: http://localhost:9090. ✔"
 }
 
 main
