@@ -28,34 +28,33 @@
 Searched for a way to run our playbooks automated without the need of AWX or other big projects while still being more stable and less error-prone than custom bash scripts. So I made Ansible-Link. This projects aims to be a KISS way to run ansible jobs remotely. Essentially a RESTful API sitting on top of [ansible-runner](https://github.com/ansible/ansible-runner).
 
 ## Prerequisites
-* Python 3.7+
-* PIP
 * Your Ansible node
 
 ## Installation
-* Clone the repository (on your ansible-node):
-```shell
-git clone git@github.com:lfkdev/ansible-link.git
-cd ansible-link
-```
+The fastest way to set up Ansible-Link is by using the provided `install.sh` script:
 
-* Install the dependencies:
-```shell
-# use virtual env
-pip install -r requirements.txt
-```
+1. **Download and run the install script:**
+   ```shell
+   wget https://raw.githubusercontent.com/lfkdev/ansible-link/main/install.sh -O - | sudo bash
+   ```
 
-* Set config values in `config.yml`
+This script will:
+- Check for necessary dependencies and install them if missing.
+- Download and install Ansible-Link.
+- Set up a Python virtual environment.
+- Configure a systemd service for Ansible-Link.
+
+After the installation, you can start using Ansible-Link immediately. You probably need to change some config values for your ansible environment `/opt/ansible-link/config.yml`
+
 ```yaml
 playbook_dir: '/etc/ansible/'
 inventory_file: '/etc/ansible/environments/hosts'
+...
 ```
 
-* Start Ansible-Link
-```shell
-python3 ansible_link/ansible_link.py
-```
-The API will be accessible at localhost:port (default 5001) or wherever you bind it to.
+To add more workers or change the user, modify `/etc/systemd/system/ansible-link.service`
+> ⚠️ **Note:** Currently, only Ubuntu versions 16.04 and higher, or Debian versions 9 and higher are officially supported. 
+> Other operating systems might also work but have not been tested. You can clone the repository and perform a manual installation if you are using a different OS.
 
 ## API Documentation
 The API documentation is available via the Swagger UI.
@@ -128,20 +127,26 @@ Leave empty to allow all playbooks. This is for the backend, you could also use 
 
 ## Prod environment
 
-**Use WSGI for prod ENV (gunicorn) + systemd service**
+You can use the install script `install.sh` to get a production-ready environment for Ansible-Link.
 
-### unitd example file
+The install script will:
+- Set up a Python VENV
+- Configure a systemd service to manage Ansible-Link
+- Utilize Gunicorn as the WSGI server.
+
+You can use a webserver like Caddy to add Basic Authentication and TLS to your Ansible-Link setup.
+
+### unitD example
 ```
 [Unit]
-Description=Ansible Link
+Description=Ansible Link Service
 After=network.target
 
 [Service]
-User=ansible
-Group=ansible
-WorkingDirectory=/opt/ansible-link
-ExecStart=/usr/local/bin/gunicorn -w 1 -k gthread -b localhost:5000 wsgi:app
-Restart=on-failure
+ExecStart=$VENV_DIR/bin/gunicorn --workers 1 --bind unix:$INSTALL_DIR/ansible_link.sock -m 007 wsgi:application
+WorkingDirectory=$INSTALL_DIR
+Restart=always
+User=root
 
 [Install]
 WantedBy=multi-user.target

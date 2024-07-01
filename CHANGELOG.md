@@ -1,11 +1,7 @@
-- Added install script
-
-#### **Thread Safety** 🔒
-- Jobs are now also being saved to disk
-- `/jobs` endpoint now pulls all infos from saved JSON files
-- (potentially **BREAKING**) saved jobs now only use their UUID as name (`jq` can be used to filter easily)
-
-#### **WSGI** 🌐
-- Minor import refactor
-- WSGI default file
-- changed README for gunicorn
+#### General 🚀
+- Install script now sets up a production-ready installation of ansible-link
+  - Fetches the latest version of ansible-link from GitHub
+  - Includes Gunicorn for handling requests
+  - Configures Unix sockets for communication
+  - Sets up a Python virtual environment (venv)
+- Updated README for install script instructions
