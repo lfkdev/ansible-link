@@ -71,8 +71,8 @@ check_systemd() {
 
 install_dependencies() {
     log "INFO" "Installing dependencies..."
-    apt-get update -qq
-    apt-get install -y -qq python3 python3-venv python3-pip unzip
+    apt-get update -qq > /dev/null
+    apt-get install -y -qq python3 python3-venv python3-pip unzip > /dev/null
 }
 
 download_ansible_link() {
@@ -174,6 +174,7 @@ main() {
     echo
     check_os_version
     get_latest_version
+    detect_ansible
     display_header
     echo "This script will ensure your system is set up with the following components:"
     echo "1. Python 3, python3-venv, and pip"
@@ -196,7 +197,6 @@ main() {
     install_ansible_link
     setup_venv
     install_python_requirements
-    detect_ansible
     update_config
     setup_service
     cleanup
