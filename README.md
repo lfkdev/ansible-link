@@ -35,7 +35,8 @@ The fastest way to set up Ansible-Link is by using the provided `install.sh` scr
 
 1. **Download and run the install script:**
    ```shell
-   wget https://raw.githubusercontent.com/lfkdev/ansible-link/main/install.sh -O - | sudo bash
+   wget https://raw.githubusercontent.com/lfkdev/ansible-link/main/install.sh
+   sudo bash install.sh
    ```
 
 This script will:
