@@ -383,7 +383,6 @@ The metrics can be used to set alerts, track the history of jobs, monitor perfor
 ## Security Considerations
 * Use TLS in production
 * Add basic auth
-* Remove ProxyFix call if not needed in your setup
 
 ## Contributing
 Contributions are always welcome - if you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
