@@ -41,6 +41,16 @@ check_root() {
     fi
 }
 
+check_port_usage() {
+    local port=$ANSIBLE_LINK_PORT
+    while lsof -i :$port &>/dev/null; do
+        log "WARNING" "Port $port is already in use. Trying next port..."
+        port=$((port + 1))
+    done
+    ANSIBLE_LINK_PORT=$port
+    log "INFO" "Using port $ANSIBLE_LINK_PORT for ansible-link."
+}
+
 check_existing_installation() {
     if [[ -d "$INSTALL_DIR" ]]; then
         read -p "ansible-link is already installed. Do you want to reinstall? This will delete $INSTALL_DIR. (y/N) " -n 1 -r
@@ -127,6 +137,7 @@ update_config() {
     log "INFO" "Updating configuration..."
     sed -i "s|^playbook_dir:.*|playbook_dir: '$ANSIBLE_DIR'|" "$INSTALL_DIR/config.yml"
     sed -i "s|^inventory_file:.*|inventory_file: '$ANSIBLE_DIR/hosts'|" "$INSTALL_DIR/config.yml"
+    sed -i "s|^port:.*|port: '$ANSIBLE_LINK_PORT'|" "$INSTALL_DIR/config.yml"
 }
 
 setup_service() {
@@ -192,6 +203,7 @@ main() {
     check_root
     check_existing_installation
     check_systemd
+    check_port_usage
     install_dependencies
     download_ansible_link
     install_ansible_link

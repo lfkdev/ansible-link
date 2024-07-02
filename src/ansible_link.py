@@ -29,7 +29,7 @@ from job_storage import JobStorage
 app = Flask(__name__)
 prefix=f'/api/v{VERSION.split(".")[0]}'
 api = Api(app, 
-          version='0.9',
+          version=VERSION,
           title='ANSIBLE-LINK',
           description='API for executing Ansible playbooks',
           external_doc={'description': 'GitHub', 'url': 'https://github.com/lfkdev/ansible-link'},
@@ -355,6 +355,6 @@ def main():
 
 if __name__ == '__main__':
     app = main()
-    app.run(debug=config.get('debug', False), host=config.get('host', '127.0.0.1'), port=config.get('port', 5000))
+    app.run(debug=config.get('debug', False), host=config.get('host', '127.0.0.1'), port=config.get('port', 5001))
 
 
