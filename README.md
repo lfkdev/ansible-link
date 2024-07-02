@@ -34,11 +34,11 @@ Searched for a way to run our playbooks automated without the need of AWX or oth
 ## Installation
 The fastest way to set up Ansible-Link is by using the provided `install.sh` script:
 
-1. **Download and run the install script:**
-   ```shell
-   wget https://raw.githubusercontent.com/lfkdev/ansible-link/main/install.sh
-   sudo bash install.sh
-   ```
+**Download and run the install script:**
+```shell
+wget https://raw.githubusercontent.com/lfkdev/ansible-link/main/install.sh
+sudo bash install.sh
+```
 
 This script will:
 - Check for necessary dependencies and install them if missing.
@@ -134,9 +134,16 @@ You can use the install script `install.sh` to get a production-ready environmen
 The install script will:
 - Set up a Python VENV
 - Configure a systemd service to manage Ansible-Link
-- Utilize Gunicorn as the WSGI server.
+- Utilize Gunicorn as the WSGI server
+- Start Ansible-Link to liste only on localhost
 
 You can use a webserver like Caddy to add Basic Authentication and TLS to your Ansible-Link setup.
+
+Also, if you're using a webserver, you can change Gunicorn to use sockets instead. For example:
+```shell
+ExecStart=$VENV_DIR/bin/gunicorn --workers 1 --bind unix:$INSTALL_DIR/ansible_link.sock -m 007 wsgi:application
+```
+
 
 ### unitD example
 ```
@@ -145,7 +152,7 @@ Description=Ansible Link Service
 After=network.target
 
 [Service]
-ExecStart=$VENV_DIR/bin/gunicorn --workers 1 --bind unix:$INSTALL_DIR/ansible_link.sock -m 007 wsgi:application
+ExecStart=$VENV_DIR/bin/gunicorn --workers 1 --bind 127.0.0.1:$ANSIBLE_LINK_PORT wsgi:application
 WorkingDirectory=$INSTALL_DIR
 Restart=always
 User=root

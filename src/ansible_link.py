@@ -56,6 +56,10 @@ job_model = api.model('JobResponse', {
     'errors': fields.List(fields.String, description='List of error messages, if any', allow_none=True)
 })
 
+available_playbooks_model = api.model('AvailablePlaybooks', {
+    'playbooks': fields.List(fields.String, description='List of available playbook paths')
+})
+
 def load_config():
     current_dir = Path(__file__).parent.absolute()
     default_config_path = current_dir / 'config.yml'
@@ -285,6 +289,20 @@ class Job(Resource):
             logger.warning(f"Job {job_id} not found")
             api.abort(404, f"Job {job_id} not found")
         return job
+
+@ns.route('/available-playbooks')
+class AvailablePlaybooks(Resource):
+    @ns.marshal_with(available_playbooks_model)
+    def get(self):
+        playbook_dir = Path(config['playbook_dir'])
+        available_playbooks = []
+
+        for file in playbook_dir.glob('**/*.yml'):
+            relative_path = file.relative_to(playbook_dir)
+            if file.is_file() and (not compiled_whitelist or any(pattern.match(str(relative_path)) for pattern in compiled_whitelist)):
+                available_playbooks.append(str(relative_path))
+
+        return {'playbooks': available_playbooks}
 
 # simple healthcheck placeholder
 @app.route('/health')

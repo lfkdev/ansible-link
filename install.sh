@@ -4,6 +4,7 @@
 set -e
 
 ANSIBLE_LINK_VERSION="2.1.1"
+ANSIBLE_LINK_PORT=5001
 INSTALL_DIR="/opt/ansible-link"
 TEMP_DIR="/tmp/ansible-link-install$RANDOM"
 VENV_DIR="$INSTALL_DIR/venv"
@@ -136,7 +137,7 @@ Description=Ansible Link Service
 After=network.target
 
 [Service]
-ExecStart=$VENV_DIR/bin/gunicorn --workers 1 --bind unix:$INSTALL_DIR/ansible_link.sock -m 007 wsgi:application
+ExecStart=$VENV_DIR/bin/gunicorn --workers 1 --bind 127.0.0.1:$ANSIBLE_LINK_PORT wsgi:application
 WorkingDirectory=$INSTALL_DIR
 Restart=always
 User=root
@@ -199,14 +200,14 @@ main() {
     update_config
     setup_service
     cleanup
-
+    echo
     log "INFO" "Ansible-Link has been installed and configured. ✔"
     log "INFO" "The service is running and will start automatically on boot. ✔"
     log "INFO" "You can check the status with: systemctl status ansible-link. ✔"
     log "WARN" "Ansible user defaults to root. ⚠"
     log "INFO" "Change the default values in $INSTALL_DIR/config.yml if needed."
     echo 
-    log "INFO" "To access Ansible-Link, go to: http://localhost:9090. ✔"
+    log "INFO" "To access Ansible-Link, go to: http://localhost:${ANSIBLE_LINK_PORT}. ✔"
 }
 
 main

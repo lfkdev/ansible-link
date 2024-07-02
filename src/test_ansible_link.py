@@ -104,5 +104,17 @@ class TestAnsibleLink(unittest.TestCase):
         for key in expected_keys:
             self.assertIn(key, file_data, f"Expected key '{key}' not found in job file")
 
+    def test_available_playbooks_endpoint(self):
+        response = self.client.get(f'{API_PATH}/ansible/available-playbooks')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertIn('playbooks', data)
+        self.assertIsInstance(data['playbooks'], list)
+        
+        self.assertIn('test_playbook.yml', data['playbooks'], "test_playbook.yml is not in the list of available playbooks")
+        
+        for playbook in data['playbooks']:
+            self.assertTrue(playbook.endswith('.yml'), f"Playbook {playbook} does not end with .yml")
+
 if __name__ == '__main__':
     unittest.main()
